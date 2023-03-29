@@ -131,4 +131,5 @@ dmypy.json
 # Credentials and personal data
 .creds
 *.csv
-credentials.jsons
+credentials.json
+token.pickle
