@@ -1,34 +1,51 @@
-import sys
+import os.path
 import csv
-import smtplib
+import pickle
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+from googleapiclient.discovery import build
 from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import base64
 
-# Set up your email credentials
-if len(sys.argv) != 3:
-    print('Usage: python3 main.py email_address email_password')
-    sys.exit()
+    
+## Set up Gmail API client
+SCOPES = ['https://www.googleapis.com/auth/gmail.send']
 
-EMAIL_ADDRESS = sys.argv[1]
-EMAIL_PASSWORD = sys.argv[2]
+def get_credentials(scopes):
+    creds = None
+    if os.path.exists('token.pickle'):
+        with open('token.pickle', 'rb') as token:
+            creds = pickle.load(token)
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', scopes)
+            creds = flow.run_local_server(port=0)
+        with open('token.pickle', 'wb') as token:
+            pickle.dump(creds, token)
+    return creds
 
-# Read the CSV file
-def send_email(from_address, email_password, to_email, email_body):
-    msg = MIMEMultipart()
-    msg["From"] = from_address
-    msg["To"] = to_email
-    msg["Subject"] = "Becarios calificados y no remunerados"
-    msg.attach(MIMEText(email_body, "plain"))
 
-        # Send the email
+def send_email(gmail_service, email, email_body):
+    message = MIMEText(email_body, "plain")
+    message["From"] = "juancamilovasquezj@gmail.com"
+    message["To"] = email
+    message["Subject"] = "Becarios calificados y no remunerados"
+
+    create_message = {'raw': base64.urlsafe_b64encode(message.as_bytes()).decode()}
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(from_address, email_password)
-            server.sendmail(from_address, email, msg.as_string())
-            print(f"Email sent to {to_email}")
-    except Exception as e:
-        print(f"Error sending email to {to_email}: {e}")
+            # Send the email
+        send_message = gmail_service.users().messages().send(userId="me", body=create_message).execute()
+        print(F'Email was sent to {email} with Email Id: {send_message["id"]}')
+    except Exception as error:
+        print(F'An error occurred: {error}')
+        send_message = None
 
+
+        
+creds = get_credentials(SCOPES)
+gmail_service = build('gmail', 'v1', credentials=creds)     
 
 with open("contacts.csv", "r") as csv_file:
     csv_reader = csv.reader(csv_file)
@@ -62,4 +79,4 @@ Laura
 """
 
         # Set up email components
-        send_email(EMAIL_ADDRESS, EMAIL_PASSWORD, email, email_body)
+        send_email(gmail_service, email, email_body)
