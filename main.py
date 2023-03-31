@@ -9,11 +9,21 @@ from googleapiclient.errors import HttpError
 import base64
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.mime.image import MIMEImage
+
 
     
 ## Set up Gmail API client
 SCOPES = ['https://www.googleapis.com/auth/gmail.send']
+
+
+def build_signature_html(signature_name):
+    sig_file_name = signature_name
+    sig_file_path = os.path.join(os.getcwd(), 'assets' ,sig_file_name)
+    sig_html = ''
+    with open(sig_file_path) as f:
+        sig_html += ''.join(f.readlines())
+    return sig_html
+
 
 def get_credentials(scopes):
     creds = None
@@ -30,11 +40,11 @@ def get_credentials(scopes):
     return creds
 
 
-def send_email(to_email, email_body, signature_path):
+def send_email(to_email, email_body, signature):
     """
     to_email: str
     email_body: HTML object
-    signature_path: Path-like object 
+    signature: HTML object 
     """
     
     # OAuth2 setup
@@ -47,14 +57,9 @@ def send_email(to_email, email_body, signature_path):
         msg = MIMEMultipart()
         msg["To"] = to_email
         msg["Subject"] = "Becarios calificados y no remunerados"
+        
         msg.attach(MIMEText(email_body, "html"))
-
-        # Attach the image signature
-        with open(signature_path, "rb") as img_file:
-            img_data = img_file.read()
-        image = MIMEImage(img_data)
-        image.add_header("Content-ID", "<signature_image>")
-        msg.attach(image)
+        msg.attach(MIMEText(signature, "html"))
 
         raw_msg = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
         message = {"raw": raw_msg}
@@ -69,9 +74,10 @@ def send_email(to_email, email_body, signature_path):
 
     return send_message
 
-        
-creds = get_credentials(SCOPES)
-gmail_service = build('gmail', 'v1', credentials=creds)     
+
+
+sig_html = build_signature_html('signature.html')
+
 
 with open("contacts.csv", "r") as csv_file:
     csv_reader = csv.reader(csv_file)
@@ -81,28 +87,22 @@ with open("contacts.csv", "r") as csv_file:
     for row in csv_reader:
         name, company, email = row
         
-        # Customize the email template
-        
-        email_body = f"""\
-Estimado {name}:
+        # Customise the email template
+        email_body = f"""
+<html>
+<head></head>
+<body>
+<p>Estimado <strong>{name}</strong>:</p>
 
-Me contacto con usted para consultarle si {company} podría usar la ayuda de un becario calificado y no remunerado.
+<p>Me contacto con usted para consultarle si <strong style="color: blue;">{company}</strong> podría usar la ayuda de un becario calificado y no remunerado.</p>
 
-Nuestra organización premiada, Connect-123, encuentra experiencias locales relacionadas con la carrera para estudiantes internacionales y graduados de las mejores universidades de EE.UU. Nos enfocamos en proyectos y objetivos concretos para que nuestros becarios puedan contribuir de manera significativa en su empresa.
+<p>Nuestra organización premiada, <em>Connect-123</em>, encuentra experiencias locales relacionadas con la carrera para estudiantes internacionales y graduados de las mejores universidades de EE.UU. Nos enfocamos en proyectos y objetivos concretos para que nuestros becarios puedan contribuir de manera significativa en su empresa.</p>
 
-Nuestros servicios son gratuitos para las organizaciones anfitrionas y los solicitantes seleccionados trabajan como becarios no remunerados durante períodos de 8 a 12 semanas. Además, nos encargamos de todos sus requisitos logísticos, incluyendo alojamiento y eventos sociales, y nuestro personal local brinda soporte las 24 horas del día, los 7 días de la semana. La idea detrás de nuestro modelo es que las organizaciones locales obtienen un recurso calificado, de forma gratuita, y que los becarios internacionales obtienen experiencia
-laboral real.
+<!-- Other paragraphs here -->
 
-Algunos ejemplos de áreas de interés pueden incluir redes sociales, diseño, desarrollo de sitios web, marketing, desarrollo empresarial, contabilidad e investigación.
-
-Si la propuesta les parece interesante, nos encantaría ayudarles a encontrar el becario más adecuado para sus necesidades y definir los objetivos del proyecto.
-
-¡Estaremos encantados de colaborar con ustedes en nuestro próximo programa!
-
-Saludos cordiales,
-
-Laura
+<p>Saludos cordiales,</p>
+</body>
+</html>
 """
-
         # Set up email components
-        send_email(gmail_service, email, email_body)
+        send_email(email, email_body, sig_html)
