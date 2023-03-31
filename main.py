@@ -1,21 +1,29 @@
+import base64
 import os.path
 import csv
 import pickle
+import sys
+from datetime import date
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-import base64
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 
-    
-## Set up Gmail API client
+if len(sys.argv) != 2:
+    print("ERROR -  Usage: python3 main.py INPUT_FILE")
+    sys.exit()
+
+
+
+INPUT_FILE = sys.argv[1]
+SUBJECT_EMAIL = "Becarios calificados y no remunerados"
 SCOPES = ['https://www.googleapis.com/auth/gmail.send']
-SUBJECT_FIRST_EMAIL = "Becarios calificados y no remunerados"
-SUBJECT_SECOND_EMAIL = ""
+
+
 
 def build_signature_html(signature_name):
     sig_file_name = signature_name
@@ -53,6 +61,7 @@ def send_email(to_email, subject, email_body, signature):
     creds = get_credentials(SCOPES)
 
     try:
+       # Set up Gmail API client
         service = build('gmail', 'v1', credentials=creds)
 
         # Set up email components
@@ -69,24 +78,37 @@ def send_email(to_email, subject, email_body, signature):
         # Send the email
         send_message = service.users().messages().send(userId="me", body=message).execute()
         print(f"Email sent to {to_email} (Message ID: {send_message['id']})")
-
     except HttpError as error:
         print(f"An error occurred: {error}")
-        send_message = None
+        send_message = str(error)
 
     return send_message
 
 
-
+input_path = os.path.join(os.getcwd(), 'input', INPUT_FILE)
 sig_html = build_signature_html('signature.html')
 
 
-subject_first_email = "Becarios calificados y no remunerados"
+output_file = "{input_file}_{today}.csv".format(
+    input_file=INPUT_FILE[:-4],
+    today=date.today().strftime('%Y-%m-%d')
+)
 
-with open("contacts.csv", "r") as csv_file:
+if not os.path.exists('logs'):
+    os.makedirs('logs')
+output_path = os.path.join(os.getcwd(), 'logs', output_file)
+
+
+with open(output_path, 'w') as output_f:
+    csv_writer = csv.writer(output_f)
+    csv_writer.writerow(['name', 'company', 'email', 'message_status'])
+
+
+
+with open(input_path, "r") as csv_file:
     csv_reader = csv.reader(csv_file)
     next(csv_reader)  # Skip the header
-
+    
     # Iterate through each row of the CSV file
     for row in csv_reader:
         name, company, email = row
@@ -109,4 +131,8 @@ with open("contacts.csv", "r") as csv_file:
 </html>
 """
         # Set up email components
-        send_email(email, email_body, sig_html)
+        user_message = send_email(email, SUBJECT_EMAIL, email_body, sig_html)
+        
+        with open(output_path, 'a') as output_f:
+            csv_writer = csv.writer(output_f)
+            csv_writer.writerow([name, company, email, user_message])
