@@ -5,8 +5,11 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
-from email.mime.text import MIMEText
+from googleapiclient.errors import HttpError
 import base64
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
 
     
 ## Set up Gmail API client
@@ -27,21 +30,44 @@ def get_credentials(scopes):
     return creds
 
 
-def send_email(gmail_service, email, email_body):
-    message = MIMEText(email_body, "plain")
-    message["From"] = "juancamilovasquezj@gmail.com"
-    message["To"] = email
-    message["Subject"] = "Becarios calificados y no remunerados"
+def send_email(to_email, email_body, signature_path):
+    """
+    to_email: str
+    email_body: HTML object
+    signature_path: Path-like object 
+    """
+    
+    # OAuth2 setup
+    creds = get_credentials(SCOPES)
 
-    create_message = {'raw': base64.urlsafe_b64encode(message.as_bytes()).decode()}
     try:
-            # Send the email
-        send_message = gmail_service.users().messages().send(userId="me", body=create_message).execute()
-        print(F'Email was sent to {email} with Email Id: {send_message["id"]}')
-    except Exception as error:
-        print(F'An error occurred: {error}')
+        service = build('gmail', 'v1', credentials=creds)
+
+        # Set up email components
+        msg = MIMEMultipart()
+        msg["To"] = to_email
+        msg["Subject"] = "Becarios calificados y no remunerados"
+        msg.attach(MIMEText(email_body, "html"))
+
+        # Attach the image signature
+        with open(signature_path, "rb") as img_file:
+            img_data = img_file.read()
+        image = MIMEImage(img_data)
+        image.add_header("Content-ID", "<signature_image>")
+        msg.attach(image)
+
+        raw_msg = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
+        message = {"raw": raw_msg}
+
+        # Send the email
+        send_message = service.users().messages().send(userId="me", body=message).execute()
+        print(f"Email sent to {to_email} (Message ID: {send_message['id']})")
+
+    except HttpError as error:
+        print(f"An error occurred: {error}")
         send_message = None
 
+    return send_message
 
         
 creds = get_credentials(SCOPES)
