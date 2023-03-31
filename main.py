@@ -14,7 +14,8 @@ from email.mime.text import MIMEText
     
 ## Set up Gmail API client
 SCOPES = ['https://www.googleapis.com/auth/gmail.send']
-
+SUBJECT_FIRST_EMAIL = "Becarios calificados y no remunerados"
+SUBJECT_SECOND_EMAIL = ""
 
 def build_signature_html(signature_name):
     sig_file_name = signature_name
@@ -40,9 +41,10 @@ def get_credentials(scopes):
     return creds
 
 
-def send_email(to_email, email_body, signature):
+def send_email(to_email, subject, email_body, signature):
     """
     to_email: str
+    subject: HTML object
     email_body: HTML object
     signature: HTML object 
     """
@@ -56,7 +58,7 @@ def send_email(to_email, email_body, signature):
         # Set up email components
         msg = MIMEMultipart()
         msg["To"] = to_email
-        msg["Subject"] = "Becarios calificados y no remunerados"
+        msg["Subject"] = subject
         
         msg.attach(MIMEText(email_body, "html"))
         msg.attach(MIMEText(signature, "html"))
@@ -78,6 +80,8 @@ def send_email(to_email, email_body, signature):
 
 sig_html = build_signature_html('signature.html')
 
+
+subject_first_email = "Becarios calificados y no remunerados"
 
 with open("contacts.csv", "r") as csv_file:
     csv_reader = csv.reader(csv_file)
