@@ -38,6 +38,7 @@ pip-log.txt
 pip-delete-this-directory.txt
 
 # Unit test / coverage reports
+scratchpad*
 htmlcov/
 .tox/
 .nox/
@@ -133,3 +134,4 @@ dmypy.json
 *.csv
 credentials.json
 token.pickle
+assets/signature.html
