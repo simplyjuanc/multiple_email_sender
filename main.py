@@ -1,6 +1,7 @@
 import base64
-import os.path
+import os
 import csv
+import json
 import pickle
 import sys
 from datetime import date
@@ -17,12 +18,35 @@ if len(sys.argv) != 2:
     print("ERROR -  Usage: python3 main.py INPUT_FILE")
     sys.exit()
 
-
-
 INPUT_FILE = sys.argv[1]
 SUBJECT_EMAIL = "Becarios calificados y no remunerados"
 SCOPES = ['https://www.googleapis.com/auth/gmail.send']
 
+
+def get_credentials():
+    # Load the client_id and client_secret from the client_secrets.json file
+    with open("client_secrets.json", "r") as f:
+        client_secrets = json.load(f)
+
+    creds = None
+
+    # Check if there's a valid token.pickle file
+    if os.path.exists("token.pickle"):
+        with open("token.pickle", "rb") as token:
+            creds = pickle.load(token)
+
+    # If there are no valid credentials available, prompt the user to log in
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_config(client_secrets, SCOPES)
+            creds = flow.run_local_server(port=5000)
+        # Save the credentials for future use
+        with open("token.pickle", "wb") as token:
+            pickle.dump(creds, token)
+
+    return creds
 
 
 def build_signature_html(signature_name):
@@ -34,21 +58,6 @@ def build_signature_html(signature_name):
     return sig_html
 
 
-def get_credentials(scopes):
-    creds = None
-    if os.path.exists('token.pickle'):
-        with open('token.pickle', 'rb') as token:
-            creds = pickle.load(token)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', scopes)
-            creds = flow.run_local_server(port=0)
-        with open('token.pickle', 'wb') as token:
-            pickle.dump(creds, token)
-    return creds
-
-
 def send_email(to_email, subject, email_body, signature):
     """
     to_email: str
@@ -58,7 +67,7 @@ def send_email(to_email, subject, email_body, signature):
     """
     
     # OAuth2 setup
-    creds = get_credentials(SCOPES)
+    creds = get_credentials()
 
     try:
        # Set up Gmail API client
@@ -97,7 +106,6 @@ output_file = "{input_file}_{today}.csv".format(
 if not os.path.exists('logs'):
     os.makedirs('logs')
 output_path = os.path.join(os.getcwd(), 'logs', output_file)
-
 
 with open(output_path, 'w') as output_f:
     csv_writer = csv.writer(output_f)
