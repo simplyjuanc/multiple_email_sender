@@ -135,6 +135,6 @@ dmypy.json
 cred*.json
 token.pickle
 client_secret*.json
-.vscode/*
-.assets/*
+.vscode/
+.assets/
 assets/signature.html

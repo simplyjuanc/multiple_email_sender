@@ -24,7 +24,7 @@ if sys.argv[1] == '1':
     log_file = 'contacts_first_email.csv'[:-4]
 elif sys.argv[1] == '2':
     input_emails = os.path.join(os.getcwd(), 'input', 'contacts_second_email.csv')
-    log_file = 'contacts_first_email.csv'[:-4]
+    log_file = 'contacts_second_email.csv'[:-4]
 else:
     print("ERROR -  Usage: python3 main.py 1 OR python3 main.py 2 ")
     sys.exit()
@@ -40,7 +40,7 @@ def get_credentials(scopes):
     
     if not os.path.exists('.creds'):
         os.makedirs(os.path.join(os.getcwd(), '.creds'))    
-    with open(os.path.join('.creds','client_secrets.json'), "r") as f:
+    with open(os.path.join('.creds','client_secret.json'), "r") as f:
         client_secrets = json.load(f)
 
     creds = None
@@ -65,10 +65,15 @@ def get_credentials(scopes):
     return creds
 
 
-def delete_credentials(creds_path='.creds'):
-    creds_path = os.path.join(os.getcwd(), creds_path)
+def delete_credentials(creds_location='.creds'):
+    creds_path = os.path.join(os.getcwd(), creds_location)
+
     if os.path.exists(creds_path):
-        shutil.rmtree(creds_path)
+        for i in os.listdir(creds_path):
+            if not i.endswith('json'):
+                file_path = os.path.join(os.getcwd(), creds_location, i)
+                os.remove(file_path)
+
         print('Credentials removed.')
 
 
@@ -173,7 +178,7 @@ def post_log(log_name):
     output_file = "{input_file}_{today}_{time}.csv".format(
         input_file=log_name,
         today=datetime.date.today().strftime('%Y-%m-%d'),
-        time=datetime.datetime.now().strftime('')
+        time=datetime.datetime.now().strftime('%H%M%S')
     )
 
     # Create logs folder if it doesn't exist.
