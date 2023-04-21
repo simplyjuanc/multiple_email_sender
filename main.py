@@ -1,10 +1,10 @@
 import base64
 import os
 import csv
+import datetime
 import json
 import pickle
 import sys
-from datetime import date
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
@@ -98,9 +98,10 @@ input_path = os.path.join(os.getcwd(), 'input', INPUT_FILE)
 sig_html = build_signature_html('signature.html')
 
 
-output_file = "{input_file}_{today}.csv".format(
+output_file = "{input_file}_{today}_{time}.csv".format(
     input_file=INPUT_FILE[:-4],
-    today=date.today().strftime('%Y-%m-%d')
+    today=datetime.date.today().strftime('%Y-%m-%d'),
+    time=datetime.datetime.now().strftime('')
 )
 
 if not os.path.exists('logs'):
@@ -132,7 +133,6 @@ with open(input_path, "r") as csv_file:
 
 <p>Nuestra organización premiada, <em>Connect-123</em>, encuentra experiencias locales relacionadas con la carrera para estudiantes internacionales y graduados de las mejores universidades de EE.UU. Nos enfocamos en proyectos y objetivos concretos para que nuestros becarios puedan contribuir de manera significativa en su empresa.</p>
 
-<!-- Other paragraphs here -->
 
 <p>Saludos cordiales,</p>
 </body>
