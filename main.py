@@ -4,6 +4,7 @@ import csv
 import datetime
 import json
 import pickle
+import shutil
 import sys
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -36,14 +37,18 @@ SCOPES = ['https://www.googleapis.com/auth/gmail.send']
 
 def get_credentials(scopes):
     # Load the client_id and client_secret from the client_secrets.json file
-    with open("client_secrets.json", "r") as f:
+    
+    if not os.path.exists('.creds'):
+        os.makedirs(os.path.join(os.getcwd(), '.creds'))    
+    with open(os.path.join('.creds','client_secrets.json'), "r") as f:
         client_secrets = json.load(f)
 
     creds = None
 
     # Check if there's a valid token.pickle file
-    if os.path.exists("token.pickle"):
-        with open("token.pickle", "rb") as token:
+    token_path = os.path.join('.creds','token.pickle')
+    if os.path.exists(token_path):
+        with open(token_path, "rb") as token:
             creds = pickle.load(token)
 
     # If there are no valid credentials available, prompt the user to log in
@@ -54,10 +59,17 @@ def get_credentials(scopes):
             flow = InstalledAppFlow.from_client_config(client_secrets, scopes)
             creds = flow.run_local_server(port=5000)
         # Save the credentials for future use
-        with open("token.pickle", "wb") as token:
+        with open(token_path, "wb") as token:
             pickle.dump(creds, token)
 
     return creds
+
+
+def delete_credentials(creds_path='.creds'):
+    creds_path = os.path.join(os.getcwd(), creds_path)
+    if os.path.exists(creds_path):
+        shutil.rmtree(creds_path)
+        print('Credentials removed.')
 
 
 def build_signature_html(signature_name):
@@ -184,12 +196,6 @@ def append_log(output_path, csv_row_str, user_message):
         csv_writer.writerow([name, company, email, user_message])
 
 
-def delete_token(token_name='token.pickle'):
-    token_file = os.path.join(os.getcwd(), token_name)
-    if os.path.exists(token_file):
-        os.remove(token_file)
-        print('Token removed.')
-
 
 
 output_path = post_log(log_file)
@@ -205,3 +211,4 @@ with open(input_emails, "r") as csv_file:
         user_message = post_custom_email(row, email_body, email_subject, sig_html)
         append_log(output_path, row, user_message)
     
+delete_credentials()
