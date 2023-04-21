@@ -15,15 +15,26 @@ from email.mime.text import MIMEText
 
 
 if len(sys.argv) != 2:
-    print("ERROR -  Usage: python3 main.py INPUT_FILE")
+    print("ERROR -  Usage: python3 main.py 1 OR python3 main.py 2 ")
     sys.exit()
 
-INPUT_FILE = sys.argv[1]
-SUBJECT_EMAIL = "Becarios calificados y no remunerados"
+if sys.argv[1] == '1':
+    input_emails = os.path.join(os.getcwd(), 'input', 'contacts_first_email.csv')
+    log_file = 'contacts_first_email.csv'[:-4]
+elif sys.argv[1] == '2':
+    input_emails = os.path.join(os.getcwd(), 'input', 'contacts_second_email.csv')
+    log_file = 'contacts_first_email.csv'[:-4]
+else:
+    print("ERROR -  Usage: python3 main.py 1 OR python3 main.py 2 ")
+    sys.exit()
+
+
+
 SCOPES = ['https://www.googleapis.com/auth/gmail.send']
 
 
-def get_credentials():
+
+def get_credentials(scopes):
     # Load the client_id and client_secret from the client_secrets.json file
     with open("client_secrets.json", "r") as f:
         client_secrets = json.load(f)
@@ -40,7 +51,7 @@ def get_credentials():
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_config(client_secrets, SCOPES)
+            flow = InstalledAppFlow.from_client_config(client_secrets, scopes)
             creds = flow.run_local_server(port=5000)
         # Save the credentials for future use
         with open("token.pickle", "wb") as token:
@@ -58,6 +69,40 @@ def build_signature_html(signature_name):
     return sig_html
 
 
+def get_html_asset(html_file_str):
+    """ Read email body file and returns string.
+    """
+    try:
+        file_path = os.path.join(os.getcwd(), 'assets', html_file_str)
+        with open(file_path, 'r') as file:
+            file_contents = file.read()
+        return file_contents
+    except FileExistsError as e:
+        print(f'ERROR {e}: HTML file not found.')
+
+
+def select_email_elements(arg):
+    """ Retrieves adequate HTML elements as strings from the assets dir. 
+    Args:
+        - arg: The first command-line argument passed to the script.
+    Returns:
+        - email_subject (str), email_body (str)
+    """
+    if arg == '1':
+        body_file = 'email_1.html'
+        email_subject = "Becarios calificados y no remunerados"
+    elif arg == '2':
+        body_file = 'email_2.html'
+        email_subject = "Internship follow up"
+    else:
+        print("Invalid argument. Please enter '1' or '2'.")
+        return None
+     
+    email_body = get_html_asset(body_file)
+
+    return email_subject, email_body
+
+
 def send_email(to_email, subject, email_body, signature):
     """
     to_email: str
@@ -67,7 +112,7 @@ def send_email(to_email, subject, email_body, signature):
     """
     
     # OAuth2 setup
-    creds = get_credentials()
+    creds = get_credentials(scopes=SCOPES)
 
     try:
        # Set up Gmail API client
@@ -94,62 +139,69 @@ def send_email(to_email, subject, email_body, signature):
     return send_message
 
 
+def post_custom_email(csv_row_str, email_body, subject_email, sig_html):
+    name, company, email = csv_row_str
+    
+    # Customise the email template
+    cust_email_body = email_body.replace("{name}", name)
+    
+    # Set up email components
+    user_message = send_email(email, subject_email, cust_email_body, sig_html)
+    return user_message
+
+
+def post_log(log_name):
+    """ Check if logs dir exists and creates it. Writes first row of log.
+    Args:
+        - log_name: How will it be prefixed - usually it's input_file[:-4] 
+    Returns: 
+        - ouput_path: Where 
+    """
+    # Set name for log file
+    output_file = "{input_file}_{today}_{time}.csv".format(
+        input_file=log_name,
+        today=datetime.date.today().strftime('%Y-%m-%d'),
+        time=datetime.datetime.now().strftime('')
+    )
+
+    # Create logs folder if it doesn't exist.
+    if not os.path.exists('logs'):
+        os.makedirs('logs')
+
+    # And then write header for output (log) file
+    output_path = os.path.join(os.getcwd(), 'logs', output_file)
+    with open(output_path, 'w') as output_f:
+        csv_writer = csv.writer(output_f)
+        csv_writer.writerow(['name', 'company', 'email', 'message_status'])
+    
+    return output_path
+
+
+def append_log(output_path, csv_row_str, user_message):
+    name, company, email = csv_row_str
+    with open(output_path, 'a') as output_f:
+        csv_writer = csv.writer(output_f)
+        csv_writer.writerow([name, company, email, user_message])
+
+
 def delete_token(token_name='token.pickle'):
     token_file = os.path.join(os.getcwd(), token_name)
     if os.path.exists(token_file):
         os.remove(token_file)
         print('Token removed.')
 
-input_path = os.path.join(os.getcwd(), 'input', INPUT_FILE)
+
+
+output_path = post_log(log_file)
 sig_html = build_signature_html('signature.html')
+email_subject, email_body = select_email_elements(sys.argv[1])
 
-
-output_file = "{input_file}_{today}_{time}.csv".format(
-    input_file=INPUT_FILE[:-4],
-    today=datetime.date.today().strftime('%Y-%m-%d'),
-    time=datetime.datetime.now().strftime('')
-)
-
-if not os.path.exists('logs'):
-    os.makedirs('logs')
-output_path = os.path.join(os.getcwd(), 'logs', output_file)
-
-with open(output_path, 'w') as output_f:
-    csv_writer = csv.writer(output_f)
-    csv_writer.writerow(['name', 'company', 'email', 'message_status'])
-
-
-
-with open(input_path, "r") as csv_file:
-    csv_reader = csv.reader(csv_file)
+with open(input_emails, "r") as csv_file:
+    csv_reader = csv.reader(csv_file) 
     next(csv_reader)  # Skip the header
     
-    # Iterate through each row of the CSV file
+    # Customise the email template and send email.
     for row in csv_reader:
-        name, company, email = row
-        
-        # Customise the email template
-        email_body = f"""
-<html>
-<head></head>
-<body>
-<p>Estimado <strong>{name}</strong>:</p>
-
-<p>Me contacto con usted para consultarle si <strong style="color: blue;">{company}</strong> podría usar la ayuda de un becario calificado y no remunerado.</p>
-
-<p>Nuestra organización premiada, <em>Connect-123</em>, encuentra experiencias locales relacionadas con la carrera para estudiantes internacionales y graduados de las mejores universidades de EE.UU. Nos enfocamos en proyectos y objetivos concretos para que nuestros becarios puedan contribuir de manera significativa en su empresa.</p>
-
-
-<p>Saludos cordiales,</p>
-</body>
-</html>
-"""
-        # Set up email components
-        user_message = send_email(email, SUBJECT_EMAIL, email_body, sig_html)
-        
-        with open(output_path, 'a') as output_f:
-            csv_writer = csv.writer(output_f)
-            csv_writer.writerow([name, company, email, user_message])
-
-
-delete_token()
+        user_message = post_custom_email(row, email_body, email_subject, sig_html)
+        append_log(output_path, row, user_message)
+    
