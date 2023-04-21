@@ -94,6 +94,12 @@ def send_email(to_email, subject, email_body, signature):
     return send_message
 
 
+def delete_token(token_name='token.pickle'):
+    token_file = os.path.join(os.getcwd(), token_name)
+    if os.path.exists(token_file):
+        os.remove(token_file)
+        print('Token removed.')
+
 input_path = os.path.join(os.getcwd(), 'input', INPUT_FILE)
 sig_html = build_signature_html('signature.html')
 
@@ -144,3 +150,6 @@ with open(input_path, "r") as csv_file:
         with open(output_path, 'a') as output_f:
             csv_writer = csv.writer(output_f)
             csv_writer.writerow([name, company, email, user_message])
+
+
+delete_token()
