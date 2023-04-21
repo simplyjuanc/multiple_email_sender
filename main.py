@@ -184,13 +184,17 @@ def append_log(output_path, csv_row_str, user_message):
         csv_writer.writerow([name, company, email, user_message])
 
 
+def delete_token(token_name='token.pickle'):
+    token_file = os.path.join(os.getcwd(), token_name)
+    if os.path.exists(token_file):
+        os.remove(token_file)
+        print('Token removed.')
 
 
 
 output_path = post_log(log_file)
 sig_html = build_signature_html('signature.html')
 email_subject, email_body = select_email_elements(sys.argv[1])
-
 
 with open(input_emails, "r") as csv_file:
     csv_reader = csv.reader(csv_file) 
