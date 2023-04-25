@@ -137,3 +137,4 @@ token.pickle
 assets/*
 client_secret*.json
 .vscode/*
+src/config.py

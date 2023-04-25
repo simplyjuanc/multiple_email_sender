@@ -38,15 +38,6 @@ def get_credentials(scopes):
     return creds
 
 
-def build_signature_html(signature_name):
-    sig_file_name = signature_name
-    sig_file_path = os.path.join(os.getcwd(), 'assets' ,sig_file_name)
-    sig_html = ''
-    with open(sig_file_path) as f:
-        sig_html += ''.join(f.readlines())
-    return sig_html
-
-
 def get_html_asset(html_file_str):
     """ Read email body file and returns string.
     """
@@ -67,8 +58,8 @@ def select_email_elements(arg):
         - email_subject (str), email_body (str)
     """
     if arg == '1':
-        body_file = 'email_1.html'
-        email_subject = "Becarios calificados y no remunerados"
+        body_file = 'email_1_2023-04-25.html'
+        email_subject = "[[organization]] / Connect-123 Interns"
     elif arg == '2':
         body_file = 'email_2.html'
         email_subject = "Internship follow up"
@@ -81,6 +72,18 @@ def select_email_elements(arg):
     return email_subject, email_body
 
 
+def replace_vars_in_str(var_dict:dict,text:str) -> str:
+    """ Replaces [[{var}]]-formatted keys 
+    in strings with value in var_dict
+    """
+    # print(text)
+    custom_txt = text
+    for k,v in var_dict.items():
+        custom_txt = custom_txt.replace('[[{}]]'.format(k), v)
+    # print(custom_txt)
+    return custom_txt
+
+
 def send_email(to_email, subject, email_body, signature):
     """
     to_email: str
@@ -90,7 +93,7 @@ def send_email(to_email, subject, email_body, signature):
     """
     
     # OAuth2 setup
-    creds = get_credentials(scopes=SCOPES)
+    creds = get_credentials(scopes=os.getenv('SCOPES'))
 
     try:
        # Set up Gmail API client
@@ -118,14 +121,35 @@ def send_email(to_email, subject, email_body, signature):
 
 
 def post_custom_email(csv_row_str, email_body, subject_email, sig_html):
+    """ Takes a csv row, customises and sends an email, 
+    and returns the system message.
+    Args:
+     - csv_row_str: csv row with only name, company, email values
+     - email_body: HTML body as str
+     - subject_email: str
+     - sig_html: HTML body as str
+    Returns: user_message - Status Code as str"""
     name, company, email = csv_row_str
+    cust_dict = {
+        'name':name,
+        'organization':company,
+        'email':email
+    }
     
     # Customise the email template
-    cust_email_body = email_body.replace("{name}", name)
+    cust_subject_email = replace_vars_in_str(cust_dict, subject_email)
+    cust_email_body = replace_vars_in_str(cust_dict, email_body)
     
+ 
     # Set up email components
-    user_message = send_email(email, subject_email, cust_email_body, sig_html)
-    return user_message
+    user_message = send_email(
+        email, 
+        cust_subject_email, 
+        cust_email_body, 
+        sig_html
+        )
+    
+    return  # user_message
 
 
 def post_log(log_name):
@@ -139,7 +163,7 @@ def post_log(log_name):
     output_file = "{input_file}_{today}_{time}.csv".format(
         input_file=log_name,
         today=datetime.date.today().strftime('%Y-%m-%d'),
-        time=datetime.datetime.now().strftime('')
+        time=datetime.datetime.now().strftime('%H-%M-%S')
     )
 
     # Create logs folder if it doesn't exist.
