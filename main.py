@@ -39,3 +39,5 @@ with open(input_emails, "r") as csv_file:
             sig_html)
         
         utils.append_log(output_path, row, user_message)
+
+utils.del_credentials()

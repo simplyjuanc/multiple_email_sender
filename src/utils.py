@@ -37,6 +37,9 @@ def get_credentials(scopes):
 
     return creds
 
+def del_credentials():
+    if os.path.exists("token.pickle"):
+        os.remove("token.pickle")
 
 def get_html_asset(html_file_str):
     """ Read email body file and returns string.
